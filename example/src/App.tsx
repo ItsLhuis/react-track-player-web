@@ -1,0 +1,534 @@
+import { useCallback, useEffect, useState } from "react"
+
+import {
+  ChevronDown,
+  ChevronUp,
+  FastForward,
+  Pause,
+  Play,
+  Repeat,
+  Repeat1,
+  SkipBack,
+  SkipForward,
+  Volume2,
+  VolumeX
+} from "lucide-react"
+
+import TrackPlayer, {
+  Event,
+  RepeatMode,
+  State,
+  type Track,
+  useActiveTrack,
+  usePlaybackState,
+  useProgress,
+  useTrackPlayerEvents
+} from "react-track-player-web"
+
+import localPureArtwork from "../assets/pure/artwork.jpg"
+import localPureTrack from "../assets/pure/pure.m4a"
+
+import localSnoozeArtwork from "../assets/snooze/artwork.jpg"
+import localSnoozeTrack from "../assets/snooze/snooze.opus"
+
+const tracks: Track[] = [
+  {
+    url: "https://rntp.dev/example/Longing.mp3",
+    title: "Longing",
+    artist: "David Chavez",
+    artwork: "https://rntp.dev/example/Longing.jpeg",
+    duration: 143
+  },
+  {
+    url: "https://rntp.dev/example/Soul%20Searching.mp3",
+    title: "Soul Searching (Demo)",
+    artist: "David Chavez",
+    artwork: "https://rntp.dev/example/Soul%20Searching.jpeg",
+    duration: 77
+  },
+  {
+    url: "https://rntp.dev/example/Lullaby%20(Demo).mp3",
+    title: "Lullaby (Demo)",
+    artist: "David Chavez",
+    artwork: "https://rntp.dev/example/Lullaby%20(Demo).jpeg",
+    duration: 71
+  },
+  {
+    url: "https://rntp.dev/example/Rhythm%20City%20(Demo).mp3",
+    title: "Rhythm City (Demo)",
+    artist: "David Chavez",
+    artwork: "https://rntp.dev/example/Rhythm%20City%20(Demo).jpeg",
+    duration: 106
+  },
+  {
+    url: "https://ais-sa5.cdnstream1.com/b75154_128mp3",
+    title: "Smooth Jazz 24/7",
+    artist: "New York, NY",
+    artwork: "https://rntp.dev/example/smooth-jazz-24-7.jpeg",
+    isLiveStream: true
+  },
+  {
+    url: "https://traffic.libsyn.com/atpfm/atp545.mp3",
+    title: "Chapters"
+  },
+  {
+    url: localPureTrack,
+    title: "Pure (Demo)",
+    artist: "David Chavez",
+    artwork: localPureArtwork,
+    duration: 28
+  },
+  {
+    url: localSnoozeTrack,
+    title: "Snooze",
+    album: "SOS",
+    artist: "SZA",
+    artwork: localSnoozeArtwork,
+    duration: 202
+  }
+]
+
+// Component to format time
+const TimeDisplay = ({ seconds }: { seconds: number }) => {
+  const mins = Math.floor(seconds / 60)
+  const secs = Math.floor(seconds % 60)
+  return (
+    <span className="text-xs text-gray-600">
+      {mins}:{secs < 10 ? "0" : ""}
+      {secs}
+    </span>
+  )
+}
+
+// Progress bar component
+const ProgressBar = ({ isLive }: { isLive: boolean }) => {
+  const { position, duration } = useProgress(100)
+
+  const handleSeek = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = parseFloat(e.target.value)
+    TrackPlayer.seekTo(newValue).catch(console.error)
+  }, [])
+
+  if (isLive) return null
+
+  return (
+    <div className="w-full mb-4">
+      <input
+        type="range"
+        min="0"
+        max={duration}
+        value={position}
+        step="0.1"
+        onChange={handleSeek}
+        className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+      />
+      <div className="flex justify-between mt-1">
+        <TimeDisplay seconds={position} />
+        <TimeDisplay seconds={duration} />
+      </div>
+    </div>
+  )
+}
+
+// Volume control component
+const VolumeControl = ({
+  volume,
+  setVolume
+}: {
+  volume: number
+  setVolume: (vol: number) => void
+}) => {
+  const handleVolumeChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const val = parseFloat(e.target.value)
+      setVolume(val)
+      TrackPlayer.setVolume(val).catch(console.error)
+    },
+    [setVolume]
+  )
+
+  const toggleMute = useCallback(() => {
+    if (volume > 0) {
+      // Save current volume before muting
+      localStorage.setItem("previousVolume", volume.toString())
+      setVolume(0)
+      TrackPlayer.setVolume(0).catch(console.error)
+    } else {
+      // Restore previous volume
+      const prevVol = parseFloat(localStorage.getItem("previousVolume") || "0.5")
+      setVolume(prevVol)
+      TrackPlayer.setVolume(prevVol).catch(console.error)
+    }
+  }, [volume, setVolume])
+
+  return (
+    <div className="flex items-center gap-2">
+      <button onClick={toggleMute} className="p-2 rounded-full hover:bg-gray-100">
+        {volume === 0 ? <VolumeX size={20} /> : <Volume2 size={20} />}
+      </button>
+      <input
+        type="range"
+        min="0"
+        max="1"
+        step="0.05"
+        value={volume}
+        onChange={handleVolumeChange}
+        className="w-24 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+      />
+    </div>
+  )
+}
+
+// Playback speed control component
+const PlaybackSpeedControl = ({ isLive }: { isLive: boolean }) => {
+  const [playbackRate, setPlaybackRate] = useState(1)
+
+  const handleRateChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
+    const rate = parseFloat(e.target.value)
+    setPlaybackRate(rate)
+    TrackPlayer.setRate(rate).catch(console.error)
+  }, [])
+
+  if (isLive) return null
+
+  return (
+    <div className="flex items-center gap-2">
+      <span className="text-sm text-gray-700">Speed:</span>
+      <select
+        value={playbackRate}
+        onChange={handleRateChange}
+        className="p-1 border border-gray-300 rounded text-sm"
+      >
+        <option value="0.5">0.5x</option>
+        <option value="0.75">0.75x</option>
+        <option value="1">1x</option>
+        <option value="1.25">1.25x</option>
+        <option value="1.5">1.5x</option>
+        <option value="2">2x</option>
+      </select>
+    </div>
+  )
+}
+
+// Repeat mode control component
+const RepeatModeControl = ({
+  repeatMode,
+  setRepeatMode
+}: {
+  repeatMode: RepeatMode
+  setRepeatMode: (mode: RepeatMode) => void
+}) => {
+  const cycleRepeatMode = useCallback(() => {
+    let nextMode: RepeatMode
+
+    switch (repeatMode) {
+      case RepeatMode.Off:
+        nextMode = RepeatMode.Track
+        break
+      case RepeatMode.Track:
+        nextMode = RepeatMode.Queue
+        break
+      default:
+        nextMode = RepeatMode.Off
+    }
+
+    TrackPlayer.setRepeatMode(nextMode)
+      .then(() => setRepeatMode(nextMode))
+      .catch(console.error)
+  }, [repeatMode, setRepeatMode])
+
+  return (
+    <button
+      onClick={cycleRepeatMode}
+      className={`p-2 rounded-full hover:bg-gray-100 ${
+        repeatMode !== RepeatMode.Off ? "text-blue-500" : ""
+      }`}
+    >
+      {repeatMode === RepeatMode.Track ? <Repeat1 size={20} /> : <Repeat size={20} />}
+    </button>
+  )
+}
+
+// Track control buttons component
+const PlaybackControls = () => {
+  const playerState = usePlaybackState()
+
+  const togglePlayPause = useCallback(async () => {
+    try {
+      if (playerState === State.Playing) {
+        await TrackPlayer.pause()
+      } else {
+        await TrackPlayer.play()
+      }
+    } catch (error) {
+      console.error("Error toggling play/pause:", error)
+    }
+  }, [playerState])
+
+  const isLoading = playerState === State.Buffering
+  const isPlaying = playerState === State.Playing
+
+  return (
+    <div className="flex items-center justify-center gap-4">
+      <button
+        onClick={() => TrackPlayer.skipToPrevious().catch(console.error)}
+        className="p-2 rounded-full hover:bg-gray-100"
+      >
+        <SkipBack size={24} />
+      </button>
+      <button
+        onClick={() => TrackPlayer.seekBy(-10).catch(console.error)}
+        className="p-2 rounded-full hover:bg-gray-100"
+      >
+        <FastForward size={18} className="rotate-180" />
+      </button>
+      <button
+        onClick={togglePlayPause}
+        disabled={isLoading}
+        className={`p-4 rounded-full ${
+          isPlaying ? "bg-red-500" : "bg-green-500"
+        } hover:opacity-90 text-white flex items-center justify-center`}
+      >
+        {isLoading ? (
+          <div className="w-6 h-6 border-4 border-t-transparent border-white rounded-full animate-spin" />
+        ) : isPlaying ? (
+          <Pause size={24} />
+        ) : (
+          <Play size={24} />
+        )}
+      </button>
+      <button
+        onClick={() => TrackPlayer.seekBy(10).catch(console.error)}
+        className="p-2 rounded-full hover:bg-gray-100"
+      >
+        <FastForward size={18} />
+      </button>
+      <button
+        onClick={() => TrackPlayer.skipToNext().catch(console.error)}
+        className="p-2 rounded-full hover:bg-gray-100"
+      >
+        <SkipForward size={24} />
+      </button>
+    </div>
+  )
+}
+
+// Track info and artwork component
+const NowPlaying = () => {
+  const activeTrack = useActiveTrack()
+
+  if (!activeTrack) {
+    return (
+      <div className="flex flex-col items-center justify-center h-48 bg-gray-100 rounded-lg">
+        <p className="text-gray-500">No track selected</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="mb-6">
+      {activeTrack.artwork && (
+        <div className="w-full aspect-square mb-4 overflow-hidden rounded-lg">
+          <img
+            src={activeTrack.artwork}
+            alt={activeTrack.title}
+            className="object-cover w-full h-full"
+          />
+        </div>
+      )}
+      <div className="text-center">
+        <h2 className="text-xl font-bold">{activeTrack.title}</h2>
+        <p className="text-gray-600">
+          {activeTrack.album && <span>{activeTrack.album} - </span>}
+          {activeTrack.artist}
+        </p>
+        {activeTrack.isLiveStream && (
+          <span className="inline-block px-2 py-1 mt-2 text-xs font-medium text-red-600 bg-red-100 rounded-full">
+            LIVE
+          </span>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// Queue item component
+type QueueItemProps = {
+  track: Track
+  isActive: boolean
+  onMoveUp: () => void
+  onMoveDown: () => void
+  onPlay: () => void
+}
+
+const QueueItem = ({ track, isActive, onMoveUp, onMoveDown, onPlay }: QueueItemProps) => {
+  return (
+    <div
+      className={`flex items-center justify-between p-3 rounded-lg ${
+        isActive ? "bg-blue-100" : "bg-gray-100"
+      } mb-2`}
+    >
+      <div className="flex items-center gap-3">
+        {track.artwork && (
+          <img src={track.artwork} alt={track.title} className="object-cover w-12 h-12 rounded" />
+        )}
+        <div>
+          <p className="font-medium">{track.title}</p>
+          {track.artist && <p className="text-sm text-gray-600">{track.artist}</p>}
+        </div>
+      </div>
+      <div className="flex items-center gap-1">
+        <button onClick={onMoveUp} className="p-1 text-gray-600 rounded hover:bg-gray-200">
+          <ChevronUp size={16} />
+        </button>
+        <button onClick={onMoveDown} className="p-1 text-gray-600 rounded hover:bg-gray-200">
+          <ChevronDown size={16} />
+        </button>
+        <button
+          onClick={onPlay}
+          className="px-2 py-1 ml-2 text-xs text-white bg-blue-500 rounded hover:bg-blue-600"
+        >
+          Play
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// Queue management component
+const QueueManager = () => {
+  const [queue, setQueue] = useState<Track[]>([])
+  const [currentTrackIndex, setCurrentTrackIndex] = useState<number | null>(null)
+
+  // Listen to track change events
+  useTrackPlayerEvents([Event.PlaybackTrackChanged], async (event) => {
+    if (event.type === Event.PlaybackTrackChanged) {
+      const index = await TrackPlayer.getActiveTrackIndex()
+      setCurrentTrackIndex(index)
+    }
+  })
+
+  // Initial load of queue
+  useEffect(() => {
+    const loadQueue = async () => {
+      const currentQueue = await TrackPlayer.getQueue()
+      setQueue(currentQueue)
+
+      const index = await TrackPlayer.getActiveTrackIndex()
+      setCurrentTrackIndex(index)
+    }
+
+    loadQueue().catch(console.error)
+  }, [])
+
+  const moveTrack = async (fromIndex: number, toIndex: number) => {
+    try {
+      await TrackPlayer.move(fromIndex, toIndex)
+      const updatedQueue = await TrackPlayer.getQueue()
+      setQueue(updatedQueue)
+    } catch (error) {
+      console.error("Failed to move track:", error)
+    }
+  }
+
+  return (
+    <div className="mt-8">
+      <h2 className="mb-4 text-lg font-semibold">Queue</h2>
+      <div className="max-h-80 overflow-y-auto">
+        {queue.map((track, index) => (
+          <QueueItem
+            key={index}
+            track={track}
+            isActive={currentTrackIndex === index}
+            onMoveUp={() => moveTrack(index, Math.max(0, index - 1))}
+            onMoveDown={() => moveTrack(index, Math.min(queue.length - 1, index + 1))}
+            onPlay={() => TrackPlayer.skip(index).catch(console.error)}
+          />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// Player container - only shows player UI when ready
+const PlayerReady = ({ children }: { children: React.ReactNode }) => {
+  const [isPlayerReady, setIsPlayerReady] = useState(false)
+
+  // Initialize player
+  useEffect(() => {
+    let isMounted = true
+
+    const setupPlayer = async () => {
+      try {
+        await TrackPlayer.setupPlayer({
+          updateInterval: 0.1,
+          useMediaSession: true
+        })
+
+        await TrackPlayer.add(tracks)
+        await TrackPlayer.setVolume(0.5)
+
+        if (isMounted) {
+          setIsPlayerReady(true)
+        }
+      } catch (error) {
+        console.error("Failed to setup player:", error)
+      }
+    }
+
+    setupPlayer()
+
+    // Cleanup on unmount
+    return () => {
+      isMounted = false
+      TrackPlayer.destroy().catch(console.error)
+    }
+  }, [])
+
+  if (!isPlayerReady) {
+    return (
+      <div className="flex items-center justify-center w-full h-screen">
+        <p className="ml-4 text-lg">Loading player...</p>
+      </div>
+    )
+  }
+
+  return <>{children}</>
+}
+
+// Main app component
+function App() {
+  const [volume, setVolume] = useState(0.5)
+  const [repeatMode, setRepeatMode] = useState<RepeatMode>(RepeatMode.Off)
+
+  return (
+    <PlayerReady>
+      <div className="p-6 bg-gray-50">
+        <div className="max-w-md mx-auto p-6 bg-white rounded-xl shadow-lg">
+          <h1 className="mb-6 text-2xl font-bold text-center">React Track Player Web</h1>
+          <NowPlaying />
+          <ProgressBar isLive={useActiveTrack()?.isLiveStream || false} />
+          <div className="mb-4">
+            <PlaybackControls />
+          </div>
+          <div className="flex items-center justify-between mb-6">
+            <VolumeControl volume={volume} setVolume={setVolume} />
+            <PlaybackSpeedControl isLive={useActiveTrack()?.isLiveStream || false} />
+            <RepeatModeControl repeatMode={repeatMode} setRepeatMode={setRepeatMode} />
+          </div>
+          <QueueManager />
+          <div className="p-3 mt-6 text-sm text-gray-600 bg-gray-100 rounded-lg">
+            <p>
+              <strong>Player state:</strong> <span className="font-mono">{usePlaybackState()}</span>
+            </p>
+            <p>
+              <strong>Repeat mode:</strong> <span className="font-mono">{repeatMode}</span>
+            </p>
+          </div>
+        </div>
+      </div>
+    </PlayerReady>
+  )
+}
+
+export default App
