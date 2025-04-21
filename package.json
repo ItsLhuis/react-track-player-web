@@ -1,6 +1,6 @@
 {
   "name": "react-track-player-web",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "A web track player for React with API similar to react-native-track-player",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -22,6 +22,7 @@
     "type": "git",
     "url": "git+https://github.com/ItsLhuis/react-track-player-web.git"
   },
+  "homepage": "https://itslhuis.github.io/react-track-player-web/",
   "peerDependencies": {
     "react": ">=16.8.0",
     "react-dom": ">=16.8.0"
