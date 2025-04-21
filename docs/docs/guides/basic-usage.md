@@ -267,7 +267,7 @@ export default AudioPlayer
 
 ## Best Practices
 
-1. **Always initialize the player after usage** and ensure it's only set up once.
+1. **Always initialize the player before usage** and ensure it's only set up once.
 
 2. **Use the provided hooks** like `usePlaybackState`, `useActiveTrack`, and `useProgress` to keep
    your UI in sync with the player state.
