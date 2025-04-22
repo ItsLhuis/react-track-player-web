@@ -1,7 +1,6 @@
 import React from "react"
 
 import clsx from "clsx"
-import styles from "./styles.module.css"
 
 type FeatureItem = {
   title: string
@@ -46,7 +45,15 @@ function Feature({ title, Svg, description }: FeatureItem) {
   return (
     <div className={clsx("col col--4")}>
       <div className="text--center">
-        <Svg className={styles.featureSvg} role="img" />
+        <Svg
+          style={{
+            margin: "0 2rem",
+            height: "180px",
+            width: "180px",
+            maxWidth: "100%"
+          }}
+          role="img"
+        />
       </div>
       <div className="text--center padding-horiz--md" style={{ marginTop: "1rem" }}>
         <h3>{title}</h3>
@@ -58,7 +65,14 @@ function Feature({ title, Svg, description }: FeatureItem) {
 
 export default function HomepageFeatures() {
   return (
-    <section className={styles.features}>
+    <section
+      style={{
+        display: "flex",
+        alignItems: "center",
+        padding: "2rem 0",
+        width: "100%"
+      }}
+    >
       <div className="container">
         <div className="row">
           {FeatureList.map((props, idx) => (

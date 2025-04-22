@@ -1,13 +1,11 @@
 import Link from "@docusaurus/Link"
 
-import useDocusaurusContext from "@docusaurus/useDocusaurusContext"
 import useBaseUrl from "@docusaurus/useBaseUrl"
+import useDocusaurusContext from "@docusaurus/useDocusaurusContext"
 
 import HomepageFeatures from "@site/src/components/HomepageFeatures"
 
 import Layout from "@theme/Layout"
-
-import styles from "./styles.module.css"
 
 type Badge = { badge: string; link: string; alt: string }
 const badges: Badge[] = [
@@ -32,7 +30,9 @@ function HomepageHeader() {
   const { siteConfig } = useDocusaurusContext()
 
   return (
-    <header className={styles.heroBanner}>
+    <header
+      style={{ paddingTop: "2rem", textAlign: "center", position: "relative", overflow: "hidden" }}
+    >
       <div className="container">
         <img
           src={useBaseUrl("/img/logo.svg")}
@@ -43,7 +43,7 @@ function HomepageHeader() {
         <p className="hero__subtitle">{siteConfig.tagline}</p>
         <div>
           {badges.map(({ alt, badge, link }, idx) => (
-            <Link to={link} key={idx} style={{ padding: "0.5rem" }}>
+            <Link to={link} key={idx} style={{ padding: "0.25rem" }}>
               <img src={badge} alt={alt} />
             </Link>
           ))}
@@ -51,7 +51,7 @@ function HomepageHeader() {
         <Link
           className="button button--primary button--lg"
           to="/docs/installation"
-          style={{ marginTop: "3rem", marginBottom: "1rem" }}
+          style={{ marginTop: "2rem" }}
         >
           Get Started
         </Link>

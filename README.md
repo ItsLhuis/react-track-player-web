@@ -1,3 +1,5 @@
+<img src="assets/icon.svg" width="100" height="100" />
+
 # React Track Player Web
 
 [![npm version](https://img.shields.io/npm/v/react-track-player-web)](https://www.npmjs.com/package/react-track-player-web)

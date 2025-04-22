@@ -85,3 +85,11 @@ html[data-theme="dark"] .header-github-link:after {
 .button--primary {
   color: white !important;
 }
+
+.clean-btn.theme-back-to-top-button {
+  background-color: var(--ifm-color-body) !important;
+  border: 1px solid var(--ifm-toc-border-color);
+}
+.clean-btn.theme-back-to-top-button::after {
+  background-color: var(--ifm-color-primary) !important;
+}
