@@ -97,23 +97,48 @@ function PlaylistManager({ playlists }) {
 Create a component to visualize and interact with the queue:
 
 ```javascript
-import React from "react"
-import TrackPlayer, { useQueue, useActiveTrackIndex } from "react-track-player-web"
+import React, { useEffect, useState } from "react"
+import TrackPlayer, { useTrackPlayerEvents, Event } from "react-track-player-web"
 
 function QueueView() {
-  const queue = useQueue()
-  const activeIndex = useActiveTrackIndex()
+  const [queue, setQueue] = useState([])
+  const [activeIndex, setActiveIndex] = useState(0)
 
-  const handleTrackSelect = (index) => {
-    TrackPlayer.skip(index)
+  // Set up initial queue and active track index
+  useEffect(() => {
+    const loadQueue = async () => {
+      const currentQueue = await TrackPlayer.getQueue()
+      setQueue(currentQueue)
+
+      // Get the current active track index
+      const currentIndex = TrackPlayer.getActiveTrackIndex()
+      setActiveIndex(currentIndex)
+    }
+
+    loadQueue()
+  }, [])
+
+  // Listen for track changes to update the active index
+  useTrackPlayerEvents([Event.PlaybackTrackChanged], (event) => {
+    if (event.nextTrack !== undefined) {
+      setActiveIndex(event.nextTrack)
+    }
+  })
+
+  const handleTrackSelect = async (index) => {
+    await TrackPlayer.skip(index)
   }
 
   const handleRemoveTrack = async (index) => {
     await TrackPlayer.remove(index)
+    const updatedQueue = await TrackPlayer.getQueue()
+    setQueue(updatedQueue)
   }
 
   const handleMoveTrack = async (fromIndex, toIndex) => {
     await TrackPlayer.move(fromIndex, toIndex)
+    const updatedQueue = await TrackPlayer.getQueue()
+    setQueue(updatedQueue)
   }
 
   return (
@@ -527,19 +552,16 @@ function ErrorHandler() {
   useEffect(() => {
     if (error && retryCount < MAX_RETRIES) {
       // Attempt automatic retry with exponential backoff
-      const timer = setTimeout(
-        async () => {
-          try {
-            console.log(`Retry attempt ${retryCount + 1}/${MAX_RETRIES}`)
-            await TrackPlayer.retry()
-            setError(null) // Clear error if retry is successful
-          } catch (retryError) {
-            console.error("Retry failed:", retryError)
-            setRetryCount((prev) => prev + 1)
-          }
-        },
-        Math.pow(2, retryCount) * 1000
-      ) // Exponential backoff: 1s, 2s, 4s
+      const timer = setTimeout(async () => {
+        try {
+          console.log(`Retry attempt ${retryCount + 1}/${MAX_RETRIES}`)
+          await TrackPlayer.retry()
+          setError(null) // Clear error if retry is successful
+        } catch (retryError) {
+          console.error("Retry failed:", retryError)
+          setRetryCount((prev) => prev + 1)
+        }
+      }, Math.pow(2, retryCount) * 1000) // Exponential backoff: 1s, 2s, 4s
 
       return () => clearTimeout(timer)
     }
