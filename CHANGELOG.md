@@ -2,7 +2,7 @@
 
 All notable changes to the React Track Player Web project will be documented in this file.
 
-## 1.1.0 - 2025-06-21
+## [1.1.0] - 2025-06-21
 
 ### Added
 
@@ -20,7 +20,7 @@ All notable changes to the React Track Player Web project will be documented in 
     - `setEqualizerPreset()`
     - `resetEqualizer()`
 
-## 1.0.2 - 2025-04-21
+## [1.0.2] - 2025-04-21
 
 ### Added
 
@@ -30,7 +30,7 @@ All notable changes to the React Track Player Web project will be documented in 
 
 - 🏠 Fixed the `homepage` field in `package.json` to correctly point to the documentation site
 
-## 1.0.1 - 2025-04-20
+## [1.0.1] - 2025-04-20
 
 ### Added
 
