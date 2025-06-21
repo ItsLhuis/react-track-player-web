@@ -132,3 +132,63 @@ if (currentMode === RepeatMode.Queue) {
   console.log("Player is set to repeat the entire queue")
 }
 ```
+
+## EqualizerFrequency
+
+Type representing the standard 10-band equalizer frequencies in Hz.
+
+```javascript
+import { EqualizerFrequency } from "react-track-player-web"
+```
+
+| Frequency | Band Description |
+| --------- | ---------------- |
+| `32`      | Sub-bass         |
+| `64`      | Bass             |
+| `125`     | Low mids         |
+| `250`     | Midrange         |
+| `500`     | Upper mids       |
+| `1000`    | Presence         |
+| `2000`    | Upper presence   |
+| `4000`    | Brilliance       |
+| `8000`    | Treble           |
+| `16000`   | Air              |
+
+### Example
+
+```javascript
+// Get all available frequencies
+const frequencies = [32, 64, 125, 250, 500, 1000, 2000, 4000, 8000, 16000]
+
+// Set gain for specific frequency
+TrackPlayer.setEqualizerBandGain(0, 4) // Set 32Hz band to +4dB
+```
+
+## EqualizerPreset
+
+Type representing predefined equalizer configurations for different music genres.
+
+```javascript
+import { EqualizerPreset } from "react-track-player-web"
+```
+
+| Preset         | Description                                     |
+| -------------- | ----------------------------------------------- |
+| `"flat"`       | No adjustments (0dB on all bands)               |
+| `"rock"`       | Enhanced bass and treble for rock music         |
+| `"pop"`        | Balanced with slight bass and treble boost      |
+| `"jazz"`       | Smooth mid-range emphasis                       |
+| `"classical"`  | Natural sound with subtle enhancements          |
+| `"electronic"` | Heavy bass and crisp highs for electronic music |
+| `"vocal"`      | Mid-range boost for vocal clarity               |
+| `"bass"`       | Heavy low-frequency emphasis                    |
+| `"treble"`     | High-frequency emphasis                         |
+
+### Example
+
+```javascript
+// Apply different presets
+await TrackPlayer.setEqualizerPreset("rock")
+await TrackPlayer.setEqualizerPreset("jazz")
+await TrackPlayer.setEqualizerPreset("flat") // Reset to flat response
+```

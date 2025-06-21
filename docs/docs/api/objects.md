@@ -127,6 +127,119 @@ console.log(`
 `)
 ```
 
+## EqualizerBand
+
+The EqualizerBand object represents a single frequency band in the 10-band equalizer.
+
+```typescript
+type EqualizerBand = {
+  frequency: EqualizerFrequency // Center frequency of the band in Hz
+  gain: number // Gain adjustment in decibels (-12dB to +12dB)
+  Q: number // Quality factor that determines bandwidth
+}
+```
+
+### Properties
+
+| Property    | Type                 | Description                                                                   |
+| ----------- | -------------------- | ----------------------------------------------------------------------------- |
+| `frequency` | `EqualizerFrequency` | Center frequency in Hz (32, 64, 125, 250, 500, 1000, 2000, 4000, 8000, 16000) |
+| `gain`      | `number`             | Gain adjustment in decibels, range: -12dB to +12dB                            |
+| `Q`         | `number`             | Quality factor determining bandwidth, typical range: 0.1 to 30                |
+
+### Example
+
+```javascript
+const bassBoostBand = {
+  frequency: 64, // 64 Hz bass frequency
+  gain: 6, // +6dB boost
+  Q: 1 // Standard Q factor
+}
+
+// Apply to equalizer
+const bands = TrackPlayer.getEqualizerBands()
+bands[1] = bassBoostBand // Update the 64Hz band
+TrackPlayer.setEqualizerBands(bands)
+```
+
+## EqualizerOptions
+
+The EqualizerOptions object contains the complete equalizer configuration.
+
+```typescript
+type EqualizerOptions = {
+  enabled: boolean // Whether the equalizer is currently enabled
+  bands: EqualizerBand[] // Array of 10 equalizer bands
+}
+```
+
+### Properties
+
+| Property  | Type              | Description                                            |
+| --------- | ----------------- | ------------------------------------------------------ |
+| `enabled` | `boolean`         | Whether the equalizer is currently active              |
+| `bands`   | `EqualizerBand[]` | Array of 10 bands covering the full frequency spectrum |
+
+### Example
+
+```javascript
+const equalizerConfig = {
+  enabled: true,
+  bands: [
+    { frequency: 32, gain: 2, Q: 1 }, // Sub-bass
+    { frequency: 64, gain: 4, Q: 1 }, // Bass
+    { frequency: 125, gain: 1, Q: 1 }, // Low mids
+    { frequency: 250, gain: 0, Q: 1 }, // Midrange
+    { frequency: 500, gain: -1, Q: 1 }, // Upper mids
+    { frequency: 1000, gain: 0, Q: 1 }, // Presence
+    { frequency: 2000, gain: 1, Q: 1 }, // Upper presence
+    { frequency: 4000, gain: 2, Q: 1 }, // Brilliance
+    { frequency: 8000, gain: 3, Q: 1 }, // Treble
+    { frequency: 16000, gain: 2, Q: 1 } // Air
+  ]
+}
+```
+
+## AudioAnalysisData
+
+The AudioAnalysisData object provides real-time frequency analysis data for visualizers.
+
+```typescript
+type AudioAnalysisData = {
+  frequencyData: Uint8Array // Frequency domain data (FFT)
+  timeData: Uint8Array // Time domain data (waveform)
+  sampleRate: number // Sample rate of the audio context
+  fftSize: number // Size of the FFT analysis
+}
+```
+
+### Properties
+
+| Property        | Type         | Description                                        |
+| --------------- | ------------ | -------------------------------------------------- |
+| `frequencyData` | `Uint8Array` | Frequency magnitudes from 0Hz to Nyquist frequency |
+| `timeData`      | `Uint8Array` | Amplitude values over time (waveform data)         |
+| `sampleRate`    | `number`     | Sample rate of the audio context in Hz             |
+| `fftSize`       | `number`     | FFT size determining frequency resolution          |
+
+### Example
+
+```javascript
+// Note: This is a conceptual example - actual implementation may vary
+const analysisData = TrackPlayer.getAudioAnalysisData()
+console.log(`
+  Sample Rate: ${analysisData.sampleRate} Hz
+  FFT Size: ${analysisData.fftSize}
+  Frequency bins: ${analysisData.frequencyData.length}
+  Time samples: ${analysisData.timeData.length}
+`)
+
+// Use for visualization
+const canvas = document.getElementById("visualizer")
+const ctx = canvas.getContext("2d")
+// Draw frequency bars or waveform using the data...
+```
+
 ## Event Data
 
 Different events provide different data structures:

@@ -19,6 +19,7 @@ way to play audio tracks in your web application.
 - 🌊 Buffer state tracking
 - 📊 Playback progress tracking
 - 🔧 Configurable capabilities
+- 🟦 10-band Equalizer with presets and real-time control
 
 ## Installation
 
@@ -276,6 +277,98 @@ TrackPlayer.addEventListener(Event.PlaybackError, (data) => {
 const callback = (data) => console.log(data)
 TrackPlayer.addEventListener(Event.PlaybackState, callback)
 TrackPlayer.removeEventListener(Event.PlaybackState, callback)
+```
+
+### Equalizer
+
+The player includes a 10-band equalizer with support for presets and real-time control.
+
+#### Enable or disable the equalizer
+
+```javascript
+// Enable the equalizer
+TrackPlayer.setEqualizerEnabled(true)
+
+// Disable the equalizer
+TrackPlayer.setEqualizerEnabled(false)
+
+// Check if it's enabled
+const isEnabled = TrackPlayer.isEqualizerEnabled()
+```
+
+#### Set gain for a specific band
+
+```javascript
+// Set gain for band 0 (32 Hz) to +4 dB
+TrackPlayer.setEqualizerBandGain(0, 4)
+
+// Get gain for band 0
+const gain = TrackPlayer.getEqualizerBandGain(0)
+```
+
+#### Set all bands at once
+
+```javascript
+import type { EqualizerBand } from "react-track-player-web"
+
+// Set all bands (array of 10 bands)
+TrackPlayer.setEqualizerBands([
+  { frequency: 32, gain: 4, Q: 1 },
+  { frequency: 64, gain: 3, Q: 1 },
+  // ...other bands...
+  { frequency: 16000, gain: 3, Q: 1 }
+])
+```
+
+#### Reset equalizer
+
+```javascript
+// Reset all bands to 0 dB
+TrackPlayer.resetEqualizer()
+```
+
+#### Use presets
+
+```javascript
+import type { EqualizerPreset } from "react-track-player-web"
+
+// Apply a preset (e.g., "rock", "pop", "jazz", "flat", etc.)
+TrackPlayer.setEqualizerPreset("rock")
+TrackPlayer.setEqualizerPreset("flat")
+```
+
+Available presets: `"rock"`, `"pop"`, `"jazz"`, `"classical"`, `"electronic"`, `"vocal"`,  
+`"bass"`, `"treble"`, `"flat"`
+
+#### Get current bands
+
+```javascript
+const bands = TrackPlayer.getEqualizerBands()
+```
+
+#### Example: Custom UI for equalizer
+
+```javascript
+function EqualizerSliders() {
+  const bands = TrackPlayer.getEqualizerBands()
+
+  return (
+    <div>
+      {bands.map((band, idx) => (
+        <div key={band.frequency}>
+          <label>{band.frequency} Hz</label>
+          <input
+            type="range"
+            min={-12}
+            max={12}
+            value={band.gain}
+            onChange={(e) => TrackPlayer.setEqualizerBandGain(idx, Number(e.target.value))}
+          />
+        </div>
+      ))}
+    </div>
+  )
+}
 ```
 
 ## Hooks

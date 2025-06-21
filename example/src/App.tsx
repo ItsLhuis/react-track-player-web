@@ -352,6 +352,100 @@ const NowPlaying = () => {
   )
 }
 
+// Equalizer UI component
+const Equalizer = () => {
+  const [enabled, setEnabled] = useState(() => TrackPlayer.isEqualizerEnabled())
+  const [bands, setBands] = useState(() => TrackPlayer.getEqualizerBands())
+  const [preset, setPreset] = useState("flat")
+
+  // Update bands when changed
+  useEffect(() => {
+    setBands(TrackPlayer.getEqualizerBands())
+  }, [enabled, preset])
+
+  const handleEnable = useCallback(() => {
+    TrackPlayer.setEqualizerEnabled(!enabled)
+    setEnabled((prev) => !prev)
+  }, [enabled])
+
+  const handleBandChange = useCallback((idx: number, gain: number) => {
+    TrackPlayer.setEqualizerBandGain(idx, gain)
+    setBands(TrackPlayer.getEqualizerBands())
+  }, [])
+
+  const handlePresetChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
+    const value = e.target.value
+    setPreset(value)
+    TrackPlayer.setEqualizerPreset(value as any)
+    setBands(TrackPlayer.getEqualizerBands())
+  }, [])
+
+  const handleReset = useCallback(() => {
+    TrackPlayer.resetEqualizer()
+    setBands(TrackPlayer.getEqualizerBands())
+    setPreset("flat")
+  }, [])
+
+  const presets = [
+    "flat",
+    "rock",
+    "pop",
+    "jazz",
+    "classical",
+    "electronic",
+    "vocal",
+    "bass",
+    "treble"
+  ]
+
+  return (
+    <div className="mb-6 p-4 bg-gray-100 rounded-lg">
+      <div className="flex items-center gap-4 mb-2">
+        <label className="font-semibold">Equalizer</label>
+        <button
+          onClick={handleEnable}
+          className={`px-3 py-1 rounded ${
+            enabled ? "bg-blue-500 text-white" : "bg-gray-300 text-gray-700"
+          }`}
+        >
+          {enabled ? "On" : "Off"}
+        </button>
+        <select value={preset} onChange={handlePresetChange} className="ml-2 p-1 rounded border">
+          {presets.map((p) => (
+            <option key={p} value={p}>
+              {p.charAt(0).toUpperCase() + p.slice(1)}
+            </option>
+          ))}
+        </select>
+        <button
+          onClick={handleReset}
+          className="ml-2 px-2 py-1 rounded bg-gray-200 hover:bg-gray-300 text-sm"
+        >
+          Reset
+        </button>
+      </div>
+      <div className="flex items-end gap-2 mt-4">
+        {bands.map((band, idx) => (
+          <div key={band.frequency} className="flex flex-col items-center">
+            <input
+              type="range"
+              min={-12}
+              max={12}
+              step={1}
+              value={band.gain}
+              disabled={!enabled}
+              onChange={(e) => handleBandChange(idx, Number(e.target.value))}
+              className="h-24 w-2"
+              style={{ writingMode: "horizontal-tb", WebkitAppearance: "slider-vertical" }}
+            />
+            <span className="text-xs mt-1">{band.frequency}Hz</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 // Queue item component
 type QueueItemProps = {
   track: Track
@@ -504,7 +598,7 @@ function App() {
   return (
     <PlayerReady>
       <div className="p-6 bg-gray-50">
-        <div className="max-w-md mx-auto p-6 bg-white rounded-xl shadow-lg">
+        <div className="max-w-lg mx-auto p-6 bg-white rounded-xl shadow-lg">
           <h1 className="mb-6 text-2xl font-bold text-center">React Track Player Web</h1>
           <NowPlaying />
           <ProgressBar isLive={useActiveTrack()?.isLiveStream || false} />
@@ -516,6 +610,7 @@ function App() {
             <PlaybackSpeedControl isLive={useActiveTrack()?.isLiveStream || false} />
             <RepeatModeControl repeatMode={repeatMode} setRepeatMode={setRepeatMode} />
           </div>
+          <Equalizer />
           <QueueManager />
           <div className="p-3 mt-6 text-sm text-gray-600 bg-gray-100 rounded-lg">
             <p>

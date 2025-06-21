@@ -208,3 +208,120 @@ export type Progress = {
    */
   buffered: number
 }
+
+/**
+ * Equalizer frequency values
+ *
+ * Represents the center frequencies (in Hz) of the standard 10-band equalizer.
+ * These values correspond to commonly used frequency bands in audio equalization,
+ * covering the full audible spectrum from sub-bass to high treble.
+ *
+ * Typical mapping:
+ * - 32 Hz: Sub-bass
+ * - 64 Hz: Bass
+ * - 125 Hz: Low mids
+ * - 250 Hz: Midrange
+ * - 500 Hz: Upper mids
+ * - 1000 Hz: Presence
+ * - 2000 Hz: Upper presence
+ * - 4000 Hz: Brilliance
+ * - 8000 Hz: Treble
+ * - 16000 Hz: Air
+ */
+export type EqualizerFrequency = 32 | 64 | 125 | 250 | 500 | 1000 | 2000 | 4000 | 8000 | 16000
+
+/**
+ * Equalizer band configuration
+ *
+ * Represents a single frequency band in the equalizer with its
+ * frequency, gain adjustment, and quality factor settings.
+ */
+export type EqualizerBand = {
+  /**
+   * Center frequency of the band in Hz
+   * Common values: 32, 64, 125, 250, 500, 1000, 2000, 4000, 8000, 16000
+   */
+  frequency: EqualizerFrequency
+
+  /**
+   * Gain adjustment for this frequency band in decibels
+   * Range: -12dB to +12dB
+   * Positive values boost the frequency, negative values cut it
+   */
+  gain: number
+
+  /**
+   * Quality factor (Q) that determines the bandwidth of the filter
+   * Higher Q values create narrower bands, lower Q values create wider bands
+   * Typical range: 0.1 to 30, with 1 being a good default
+   */
+  Q: number
+}
+
+/**
+ * Equalizer configuration options
+ *
+ * Contains the overall equalizer settings including whether it's enabled
+ * and the configuration for all frequency bands.
+ */
+export type EqualizerOptions = {
+  /**
+   * Whether the equalizer is currently enabled
+   * When disabled, all frequency adjustments are bypassed
+   */
+  enabled: boolean
+
+  /**
+   * Array of equalizer bands configuration
+   * Typically contains 10 bands covering the audible frequency spectrum
+   */
+  bands: EqualizerBand[]
+}
+
+/**
+ * Equalizer preset names
+ *
+ * Predefined equalizer configurations for different music genres
+ * and listening preferences.
+ */
+export type EqualizerPreset =
+  | "flat" // No adjustments (0dB on all bands)
+  | "rock" // Enhanced bass and treble for rock music
+  | "pop" // Balanced with slight bass and treble boost
+  | "jazz" // Smooth mid-range emphasis
+  | "classical" // Natural sound with subtle enhancements
+  | "electronic" // Heavy bass and crisp highs for electronic music
+  | "vocal" // Mid-range boost for vocal clarity
+  | "bass" // Heavy low-frequency emphasis
+  | "treble" // High-frequency emphasis
+
+/**
+ * Audio analysis data
+ *
+ * Real-time frequency analysis data from the audio stream,
+ * useful for creating visualizers or automatic EQ adjustments.
+ */
+export type AudioAnalysisData = {
+  /**
+   * Frequency domain data (FFT)
+   * Array of frequency magnitudes from 0Hz to Nyquist frequency
+   */
+  frequencyData: Uint8Array
+
+  /**
+   * Time domain data (waveform)
+   * Array of amplitude values over time
+   */
+  timeData: Uint8Array
+
+  /**
+   * Sample rate of the audio context
+   */
+  sampleRate: number
+
+  /**
+   * Size of the FFT analysis
+   * Determines frequency resolution
+   */
+  fftSize: number
+}

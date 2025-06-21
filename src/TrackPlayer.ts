@@ -1,6 +1,16 @@
 import { Capability, Event, RepeatMode, State } from "./constants"
 
-import type { EventData, EventHandler, Progress, SetupOptions, Track } from "./types"
+import type {
+  AudioAnalysisData,
+  EqualizerBand,
+  EqualizerOptions,
+  EqualizerPreset,
+  EventData,
+  EventHandler,
+  Progress,
+  SetupOptions,
+  Track
+} from "./types"
 
 class SetupNotCalledError extends Error {
   constructor() {
@@ -27,6 +37,19 @@ const DefaultOptions: SetupOptions = {
   ]
 }
 
+const DefaultEqualizerBands: EqualizerBand[] = [
+  { frequency: 32, gain: 0, Q: 1 },
+  { frequency: 64, gain: 0, Q: 1 },
+  { frequency: 125, gain: 0, Q: 1 },
+  { frequency: 250, gain: 0, Q: 1 },
+  { frequency: 500, gain: 0, Q: 1 },
+  { frequency: 1000, gain: 0, Q: 1 },
+  { frequency: 2000, gain: 0, Q: 1 },
+  { frequency: 4000, gain: 0, Q: 1 },
+  { frequency: 8000, gain: 0, Q: 1 },
+  { frequency: 16000, gain: 0, Q: 1 }
+]
+
 /**
  * Main TrackPlayer class to handle audio playback
  */
@@ -45,6 +68,16 @@ class TrackPlayer {
   private repeatMode: RepeatMode = RepeatMode.Off
   private isChangingTrack: boolean = false
   private metadataLoadedMap: Map<number, boolean> = new Map()
+
+  private audioContext: AudioContext | null = null
+  private sourceNode: MediaElementAudioSourceNode | null = null
+  private gainNode: GainNode | null = null
+  private equalizerFilters: BiquadFilterNode[] = []
+  private analyserNode: AnalyserNode | null = null
+  private equalizerOptions: EqualizerOptions = {
+    enabled: false,
+    bands: [...DefaultEqualizerBands]
+  }
 
   /**
    * Private constructor to enforce singleton pattern
@@ -74,6 +107,49 @@ class TrackPlayer {
       throw new SetupNotCalledError()
     }
     return TrackPlayer.instance
+  }
+
+  private setupEqualizer(): void {
+    if (!this.audioElement) return
+
+    try {
+      this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
+
+      this.sourceNode = this.audioContext.createMediaElementSource(this.audioElement)
+
+      this.gainNode = this.audioContext.createGain()
+
+      this.analyserNode = this.audioContext.createAnalyser()
+      this.analyserNode.fftSize = 2048
+      this.analyserNode.smoothingTimeConstant = 0.8
+
+      this.equalizerFilters = []
+
+      this.equalizerOptions.bands.forEach((band) => {
+        const filter = this.audioContext!.createBiquadFilter()
+        filter.type = "peaking"
+        filter.frequency.value = band.frequency
+        filter.Q.value = band.Q
+        filter.gain.value = band.gain
+
+        this.equalizerFilters.push(filter)
+      })
+
+      let previousNode: AudioNode = this.sourceNode
+
+      this.equalizerFilters.forEach((filter) => {
+        previousNode.connect(filter)
+        previousNode = filter
+      })
+
+      previousNode.connect(this.analyserNode)
+
+      this.analyserNode.connect(this.gainNode)
+
+      this.gainNode.connect(this.audioContext.destination)
+    } catch (error) {
+      console.error(error)
+    }
   }
 
   /**
@@ -145,6 +221,8 @@ class TrackPlayer {
     if (this.options.useMediaSession && "mediaSession" in navigator) {
       this.setupMediaSession()
     }
+
+    this.setupEqualizer()
 
     this.isSetup = true
     this.updateState(State.Ready)
@@ -1408,6 +1486,224 @@ class TrackPlayer {
       duration: TrackPlayer.getDuration(),
       buffered: TrackPlayer.getBufferedPosition()
     }
+  }
+
+  /**
+   * Enables or disables the equalizer
+   * @param enabled True to enable, false to disable
+   */
+  public static setEqualizerEnabled(enabled: boolean): void {
+    const instance = TrackPlayer.getInstance()
+    instance.equalizerOptions.enabled = enabled
+
+    if (instance.equalizerFilters.length > 0) {
+      instance.equalizerFilters.forEach((filter, index) => {
+        if (enabled) {
+          filter.gain.value = instance.equalizerOptions.bands[index].gain
+        } else {
+          filter.gain.value = 0
+        }
+      })
+    }
+  }
+
+  /**
+   * Checks if the equalizer is enabled
+   * @returns True if the equalizer is enabled
+   */
+  public static isEqualizerEnabled(): boolean {
+    const instance = TrackPlayer.getInstance()
+    return instance.equalizerOptions.enabled
+  }
+
+  /**
+   * Sets the gain of a specific equalizer band
+   * @param bandIndex Band index (0-9)
+   * @param gain Gain in dB (-12 to +12)
+   */
+  public static setEqualizerBandGain(bandIndex: number, gain: number): void {
+    const instance = TrackPlayer.getInstance()
+
+    if (bandIndex < 0 || bandIndex >= instance.equalizerOptions.bands.length) {
+      throw new Error(`Band index ${bandIndex} is out of range`)
+    }
+
+    // Clamp gain between -12 and +12 dB
+    const clampedGain = Math.max(-12, Math.min(12, gain))
+
+    // Update options
+    instance.equalizerOptions.bands[bandIndex].gain = clampedGain
+
+    // Update filter if enabled
+    if (instance.equalizerOptions.enabled && instance.equalizerFilters[bandIndex]) {
+      instance.equalizerFilters[bandIndex].gain.value = clampedGain
+    }
+  }
+
+  /**
+   * Gets the gain of a specific band
+   * @param bandIndex Band index
+   * @returns Gain in dB
+   */
+  public static getEqualizerBandGain(bandIndex: number): number {
+    const instance = TrackPlayer.getInstance()
+
+    if (bandIndex < 0 || bandIndex >= instance.equalizerOptions.bands.length) {
+      throw new Error(`Band index ${bandIndex} is out of range`)
+    }
+
+    return instance.equalizerOptions.bands[bandIndex].gain
+  }
+
+  /**
+   * Gets all equalizer bands
+   * @returns Array with configuration of all bands
+   */
+  public static getEqualizerBands(): EqualizerBand[] {
+    const instance = TrackPlayer.getInstance()
+    return [...instance.equalizerOptions.bands]
+  }
+
+  /**
+   * Sets multiple equalizer bands at once
+   * @param bands Array with the configuration of the bands
+   */
+  public static setEqualizerBands(bands: EqualizerBand[]): void {
+    const instance = TrackPlayer.getInstance()
+
+    if (bands.length !== instance.equalizerOptions.bands.length) {
+      throw new Error(
+        `Expected ${instance.equalizerOptions.bands.length} bands, got ${bands.length}`
+      )
+    }
+
+    bands.forEach((band, index) => {
+      const clampedGain = Math.max(-12, Math.min(12, band.gain))
+      instance.equalizerOptions.bands[index] = { ...band, gain: clampedGain }
+
+      // Update filter if enabled
+      if (instance.equalizerOptions.enabled && instance.equalizerFilters[index]) {
+        instance.equalizerFilters[index].gain.value = clampedGain
+      }
+    })
+  }
+
+  /**
+   * Resets the equalizer to default values (all gains to 0)
+   */
+  public static resetEqualizer(): void {
+    const instance = TrackPlayer.getInstance()
+
+    instance.equalizerOptions.bands.forEach((band, index) => {
+      band.gain = 0
+
+      if (instance.equalizerFilters[index]) {
+        instance.equalizerFilters[index].gain.value = 0
+      }
+    })
+  }
+
+  /**
+   * Applies a predefined equalizer preset
+   * @param preset Preset name (e.g., "rock", "pop", "flat")
+   */
+  public static setEqualizerPreset(preset: EqualizerPreset): void {
+    const instance = TrackPlayer.getInstance()
+
+    let gains: number[]
+
+    // Predefined presets with optimized settings
+    switch (preset.toLowerCase()) {
+      case "rock":
+        gains = [4, 3, 1, -1, 0, 1, 3, 4, 4, 3]
+        break
+      case "pop":
+        gains = [1, 2, 3, 2, 0, -1, -1, 1, 2, 3]
+        break
+      case "jazz":
+        gains = [2, 1, 0, 1, 2, 2, 1, 0, 1, 2]
+        break
+      case "classical":
+        gains = [3, 2, 1, 0, -1, -1, 0, 1, 2, 3]
+        break
+      case "electronic":
+        gains = [5, 4, 2, 0, -1, 1, 2, 3, 4, 5]
+        break
+      case "vocal":
+        gains = [0, -1, 0, 2, 4, 3, 2, 1, 0, -1]
+        break
+      case "bass":
+        gains = [6, 5, 4, 2, 1, 0, -1, -2, -2, -2]
+        break
+      case "treble":
+        gains = [-2, -2, -1, 0, 1, 2, 4, 5, 6, 6]
+        break
+      case "flat":
+      default:
+        gains = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+        break
+    }
+
+    if (gains.length !== instance.equalizerOptions.bands.length) {
+      throw new Error(
+        `Expected ${instance.equalizerOptions.bands.length} gain values, got ${gains.length}`
+      )
+    }
+
+    gains.forEach((gain, index) => {
+      TrackPlayer.setEqualizerBandGain(index, gain)
+    })
+  }
+
+  /**
+   * Gets real-time audio analysis data
+   * @returns Frequency and time-domain data
+   */
+  public static getAudioAnalysisData(): AudioAnalysisData | null {
+    const instance = TrackPlayer.getInstance()
+
+    if (!instance.analyserNode || !instance.audioContext) {
+      return null
+    }
+
+    const bufferLength = instance.analyserNode.frequencyBinCount
+    const frequencyData = new Uint8Array(bufferLength)
+    const timeData = new Uint8Array(bufferLength)
+
+    instance.analyserNode.getByteFrequencyData(frequencyData)
+    instance.analyserNode.getByteTimeDomainData(timeData)
+
+    return {
+      frequencyData,
+      timeData,
+      sampleRate: instance.audioContext.sampleRate,
+      fftSize: instance.analyserNode.fftSize
+    }
+  }
+
+  /**
+   * Configures the audio analyser
+   * @param fftSize FFT size (must be a power of 2)
+   * @param smoothingTimeConstant Temporal smoothing (0-1)
+   */
+  public static configureAudioAnalyser(
+    fftSize: number = 2048,
+    smoothingTimeConstant: number = 0.8
+  ): void {
+    const instance = TrackPlayer.getInstance()
+
+    if (!instance.analyserNode) {
+      console.warn("Audio analyser not initialized")
+      return
+    }
+
+    // Check if fftSize is a power of 2
+    if ((fftSize & (fftSize - 1)) !== 0) {
+      throw new Error("fftSize must be a power of 2")
+    }
+
+    instance.analyserNode.fftSize = fftSize
+    instance.analyserNode.smoothingTimeConstant = Math.max(0, Math.min(1, smoothingTimeConstant))
   }
 
   /**

@@ -2,6 +2,24 @@
 
 All notable changes to the React Track Player Web project will be documented in this file.
 
+## 1.1.0 - 2025-06-21
+
+### Added
+
+- 🟦 **10-band Equalizer with presets and real-time control**
+  - Enable/disable equalizer functionality
+  - Control individual band gains (-12 to +12 dB)
+  - Set all bands at once with custom configurations
+  - Built-in presets: "rock", "pop", "jazz", "classical", "electronic", "vocal", "bass", "treble",
+    "flat"
+  - Real-time equalizer adjustments during playback
+  - Full programmatic control via new API methods:
+    - `setEqualizerEnabled()` / `isEqualizerEnabled()`
+    - `setEqualizerBandGain()` / `getEqualizerBandGain()`
+    - `setEqualizerBands()` / `getEqualizerBands()`
+    - `setEqualizerPreset()`
+    - `resetEqualizer()`
+
 ## 1.0.2 - 2025-04-21
 
 ### Added
