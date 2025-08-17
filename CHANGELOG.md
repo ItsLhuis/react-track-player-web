@@ -2,6 +2,23 @@
 
 All notable changes to the React Track Player Web project will be documented in this file.
 
+## [1.1.1] - 2025-08-17
+
+### Fixed
+
+- 🔧 **CORS restrictions with Web Audio API**
+
+  - Fixed "MediaElementAudioSource outputs zeroes due to CORS access restrictions" error
+  - Added `crossOrigin = "anonymous"` to audio element initialization
+  - Equalizer and audio analysis now work correctly with all audio sources
+
+- 🎵 **Queue navigation behavior in repeat modes**
+  - Fixed skip next/previous logic when only one track exists in queue
+  - RepeatMode.Track: Skip functions now correctly restart the current track
+  - RepeatMode.Off: Skip functions throw error when reaching queue boundaries
+  - RepeatMode.Queue: Skip functions correctly wrap around queue boundaries
+  - Improved consistency in queue boundary handling across all repeat modes
+
 ## [1.1.0] - 2025-06-21
 
 ### Added
