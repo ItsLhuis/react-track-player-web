@@ -2,6 +2,16 @@
 
 All notable changes to the React Track Player Web project will be documented in this file.
 
+## [1.1.2] - 2025-08-17
+
+### Fixed
+
+- 🔁 **RepeatMode.Queue behavior for single track scenarios**
+  - Fixed skipToNext/skipToPrevious logic when only one track exists in queue with RepeatMode.Queue
+  - Single track now correctly restarts when using RepeatMode.Queue mode
+  - Improved validation order to prioritize repeat mode logic over track count checks
+  - Maintains consistent behavior across all repeat modes regardless of queue size
+
 ## [1.1.1] - 2025-08-17
 
 ### Fixed
