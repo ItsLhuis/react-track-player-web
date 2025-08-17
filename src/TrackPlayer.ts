@@ -996,11 +996,7 @@ class TrackPlayer {
       return
     }
 
-    // If there's only one track in queue and not in repeat track mode, throw error
-    if (instance.queue.length === 1) {
-      throw new Error("No next track available")
-    }
-
+    // Check if we're at the end of the queue
     if (instance.currentTrackIndex >= instance.queue.length - 1) {
       if (instance.repeatMode === RepeatMode.Queue && instance.queue.length > 0) {
         const wasPlaying = instance.state === State.Playing || instance.playWhenReady
@@ -1017,6 +1013,10 @@ class TrackPlayer {
         await TrackPlayer.play()
         return
       } else {
+        // If there's only one track in queue and not in repeat mode, throw error
+        if (instance.queue.length === 1) {
+          throw new Error("No next track available")
+        }
         throw new Error("No next track available")
       }
     }
@@ -1060,13 +1060,9 @@ class TrackPlayer {
       return
     }
 
-    // If there's only one track in queue and not in repeat track mode, throw error
-    if (instance.queue.length === 1) {
-      throw new Error("No previous track available")
-    }
-
+    // Check if we're at the beginning of the queue
     if (instance.currentTrackIndex <= 0) {
-      if (instance.repeatMode === RepeatMode.Queue && instance.queue.length > 1) {
+      if (instance.repeatMode === RepeatMode.Queue && instance.queue.length > 0) {
         const wasPlaying = instance.state === State.Playing || instance.playWhenReady
         instance.currentTrackIndex = instance.queue.length - 1
 
@@ -1081,6 +1077,10 @@ class TrackPlayer {
         await TrackPlayer.play()
         return
       } else {
+        // If there's only one track in queue and not in repeat mode, throw error
+        if (instance.queue.length === 1) {
+          throw new Error("No previous track available")
+        }
         throw new Error("No previous track available")
       }
     }
