@@ -69,6 +69,8 @@ class TrackPlayer {
   private isChangingTrack: boolean = false
   private metadataLoadedMap: Map<number, boolean> = new Map()
 
+  private hasTriedInitAudio: boolean = false
+
   private audioContext: AudioContext | null = null
   private sourceNode: MediaElementAudioSourceNode | null = null
   private gainNode: GainNode | null = null
@@ -109,32 +111,79 @@ class TrackPlayer {
     return TrackPlayer.instance
   }
 
+  /**
+   * Sets up the audio equalizer and analyser nodes
+   * Creates AudioContext and all audio nodes but doesn't connect them
+   * Connections are made on first play() to comply with browser policies
+   */
   private setupEqualizer(): void {
     if (!this.audioElement) return
+
+    // Check if AudioContext has already been created
+    if (this.audioContext && this.audioContext.state !== "closed") return
 
     try {
       this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
 
+      // Don't try to create nodes if context is suspended
+      // They will be created when context is resumed
+      if (this.audioContext.state === "suspended") {
+        return
+      }
+
+      this.createAudioFilters()
+    } catch (error) {
+      console.error("Error setting up equalizer:", error)
+    }
+  }
+
+  /**
+   * Creates audio filters and analyser node (but not source node)
+   */
+  private createAudioFilters(): void {
+    if (!this.audioContext) return
+
+    this.gainNode = this.audioContext.createGain()
+
+    this.analyserNode = this.audioContext.createAnalyser()
+    this.analyserNode.fftSize = 2048
+    this.analyserNode.smoothingTimeConstant = 0.8
+
+    this.equalizerFilters = []
+
+    this.equalizerOptions.bands.forEach((band) => {
+      const filter = this.audioContext!.createBiquadFilter()
+      filter.type = "peaking"
+      filter.frequency.value = band.frequency
+      filter.Q.value = band.Q
+      filter.gain.value = band.gain
+
+      this.equalizerFilters.push(filter)
+    })
+  }
+
+  /**
+   * Creates the source node and connects all audio nodes
+   * Called only once on first play() after user interaction
+   */
+  private async initializeAudioGraph(): Promise<void> {
+    if (!this.audioContext || !this.audioElement || this.sourceNode) return
+
+    try {
+      // Resume context if suspended
+      if (this.audioContext.state === "suspended") {
+        await this.audioContext.resume()
+      }
+
+      // Create source node (can only be done once per audio element)
       this.sourceNode = this.audioContext.createMediaElementSource(this.audioElement)
 
-      this.gainNode = this.audioContext.createGain()
+      // Create filters if they don't exist (in case context was suspended during init)
+      if (!this.gainNode) {
+        this.createAudioFilters()
+      }
 
-      this.analyserNode = this.audioContext.createAnalyser()
-      this.analyserNode.fftSize = 2048
-      this.analyserNode.smoothingTimeConstant = 0.8
-
-      this.equalizerFilters = []
-
-      this.equalizerOptions.bands.forEach((band) => {
-        const filter = this.audioContext!.createBiquadFilter()
-        filter.type = "peaking"
-        filter.frequency.value = band.frequency
-        filter.Q.value = band.Q
-        filter.gain.value = band.gain
-
-        this.equalizerFilters.push(filter)
-      })
-
+      // Connect all nodes
       let previousNode: AudioNode = this.sourceNode
 
       this.equalizerFilters.forEach((filter) => {
@@ -142,13 +191,11 @@ class TrackPlayer {
         previousNode = filter
       })
 
-      previousNode.connect(this.analyserNode)
-
-      this.analyserNode.connect(this.gainNode)
-
-      this.gainNode.connect(this.audioContext.destination)
+      previousNode.connect(this.analyserNode!)
+      this.analyserNode!.connect(this.gainNode!)
+      this.gainNode!.connect(this.audioContext.destination)
     } catch (error) {
-      console.error(error)
+      console.error("Error initializing audio graph:", error)
     }
   }
 
@@ -167,6 +214,7 @@ class TrackPlayer {
     // Create audio element if it doesn't exist
     if (!this.audioElement) {
       this.audioElement = document.createElement("audio")
+      this.audioElement.crossOrigin = "anonymous"
       this.audioElement.setAttribute("id", "react-track-player-web")
       document.body.appendChild(this.audioElement)
     }
@@ -940,16 +988,17 @@ class TrackPlayer {
       throw new Error("No track is currently playing")
     }
 
+    // If in repeat track mode, restart the current song
     if (instance.repeatMode === RepeatMode.Track && instance.currentTrackIndex >= 0) {
-      // Just reload and replay the current track
       const wasPlaying = instance.state === State.Playing || instance.playWhenReady
       await instance.loadTrack(instance.queue[instance.currentTrackIndex], wasPlaying)
-
-      // No track change event because we're repeating the same track
-
-      // Preserve playback state
       await TrackPlayer.play()
       return
+    }
+
+    // If there's only one track in queue and not in repeat track mode, throw error
+    if (instance.queue.length === 1) {
+      throw new Error("No next track available")
     }
 
     if (instance.currentTrackIndex >= instance.queue.length - 1) {
@@ -957,18 +1006,15 @@ class TrackPlayer {
         const wasPlaying = instance.state === State.Playing || instance.playWhenReady
         instance.currentTrackIndex = 0
 
-        // Don't change play state while changing tracks
         await instance.loadTrack(instance.queue[0], wasPlaying)
 
         instance.emitEvent({
           type: Event.PlaybackTrackChanged,
-          prevTrack: instance.currentTrackIndex - 1,
+          prevTrack: instance.queue.length - 1, // The previous track was the last one
           nextTrack: instance.currentTrackIndex
         })
 
-        // Preserve playback state
         await TrackPlayer.play()
-
         return
       } else {
         throw new Error("No next track available")
@@ -978,7 +1024,6 @@ class TrackPlayer {
     const wasPlaying = instance.state === State.Playing || instance.playWhenReady
     instance.currentTrackIndex += 1
 
-    // Don't change play state while changing tracks
     await instance.loadTrack(instance.queue[instance.currentTrackIndex], wasPlaying)
 
     instance.emitEvent({
@@ -987,10 +1032,7 @@ class TrackPlayer {
       nextTrack: instance.currentTrackIndex
     })
 
-    // Start preloading metadata for the next track
     instance.preloadNextTrackMetadata()
-
-    // Preserve playback state
     await TrackPlayer.play()
   }
 
@@ -1010,16 +1052,17 @@ class TrackPlayer {
       throw new Error("No track is currently playing")
     }
 
+    // If in repeat track mode, restart the current song
     if (instance.repeatMode === RepeatMode.Track && instance.currentTrackIndex >= 0) {
-      // Just reload and replay the current track
       const wasPlaying = instance.state === State.Playing || instance.playWhenReady
       await instance.loadTrack(instance.queue[instance.currentTrackIndex], wasPlaying)
-
-      // No track change event because we're repeating the same track
-
-      // Preserve playback state
       await TrackPlayer.play()
       return
+    }
+
+    // If there's only one track in queue and not in repeat track mode, throw error
+    if (instance.queue.length === 1) {
+      throw new Error("No previous track available")
     }
 
     if (instance.currentTrackIndex <= 0) {
@@ -1027,18 +1070,15 @@ class TrackPlayer {
         const wasPlaying = instance.state === State.Playing || instance.playWhenReady
         instance.currentTrackIndex = instance.queue.length - 1
 
-        // Don't change play state while changing tracks
         await instance.loadTrack(instance.queue[instance.currentTrackIndex], wasPlaying)
 
         instance.emitEvent({
           type: Event.PlaybackTrackChanged,
-          prevTrack: instance.currentTrackIndex + 1,
+          prevTrack: 0, // The previous track was the first one
           nextTrack: instance.currentTrackIndex
         })
 
-        // Preserve playback state
         await TrackPlayer.play()
-
         return
       } else {
         throw new Error("No previous track available")
@@ -1048,7 +1088,6 @@ class TrackPlayer {
     const wasPlaying = instance.state === State.Playing || instance.playWhenReady
     instance.currentTrackIndex -= 1
 
-    // Don't change play state while changing tracks
     await instance.loadTrack(instance.queue[instance.currentTrackIndex], wasPlaying)
 
     instance.emitEvent({
@@ -1057,10 +1096,7 @@ class TrackPlayer {
       nextTrack: instance.currentTrackIndex
     })
 
-    // Start preloading metadata for the next track
     instance.preloadNextTrackMetadata()
-
-    // Preserve playback state
     await TrackPlayer.play()
   }
 
@@ -1165,6 +1201,12 @@ class TrackPlayer {
 
     if (!instance.audioElement) {
       throw new Error("Player not initialized")
+    }
+
+    // Initialize audio graph on first user interaction (only once)
+    if (!instance.sourceNode && instance.audioContext && !instance.hasTriedInitAudio) {
+      instance.hasTriedInitAudio = true
+      await instance.initializeAudioGraph()
     }
 
     // Check if we're at the end of the queue (last track has finished playing)
