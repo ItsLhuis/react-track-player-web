@@ -112,6 +112,44 @@ await TrackPlayer.move(fromIndex: number, toIndex: number): Promise<void>
 await TrackPlayer.move(2, 5)
 ```
 
+### updateMetadataForTrack
+
+Updates the metadata for a specific track in the queue.
+
+```javascript
+await TrackPlayer.updateMetadataForTrack(index: number, metadata: Partial<Track>): Promise<void>
+```
+
+#### Parameters
+
+| Parameter | Type             | Required | Description                               |
+| --------- | ---------------- | -------- | ----------------------------------------- |
+| index     | `number`         | Yes      | Index of the track to update              |
+| metadata  | `Partial<Track>` | Yes      | New metadata to merge with existing track |
+
+#### Example
+
+```javascript
+// Update the title and artist of track at index 1
+await TrackPlayer.updateMetadataForTrack(1, {
+  title: "New Track Title",
+  artist: "Updated Artist Name",
+  album: "New Album"
+})
+
+// Update only the artwork
+await TrackPlayer.updateMetadataForTrack(0, {
+  artwork: "https://example.com/new-artwork.jpg"
+})
+
+// Add custom metadata
+await TrackPlayer.updateMetadataForTrack(2, {
+  genre: "Rock",
+  year: 2023,
+  rating: 5
+})
+```
+
 ## Queue Information
 
 ### getQueue
@@ -159,7 +197,70 @@ Returns the Track object if found, or undefined if the index is out of bounds.
 #### Example
 
 ```javascript
-const trackAtIndex2 = TrackPlayer.getTrack(2);
+const trackAtIndex2 = TrackPlayer.getTrack(2)
 if (trackAtIndex2) {
-  console
+  console.log(`Track at index 2: ${trackAtIndex2.title}`)
+} else {
+  console.log("No track found at index 2")
+}
+```
+
+### getActiveTrack
+
+Gets the currently active track.
+
+```javascript
+TrackPlayer.getActiveTrack(): Track | undefined
+```
+
+#### Return Value
+
+Returns the currently active Track object, or undefined if no track is active.
+
+#### Example
+
+```javascript
+const activeTrack = TrackPlayer.getActiveTrack()
+if (activeTrack) {
+  console.log(`Currently playing: ${activeTrack.title} by ${activeTrack.artist}`)
+} else {
+  console.log("No track is currently active")
+}
+```
+
+### getActiveTrackIndex
+
+Gets the index of the currently active track in the queue.
+
+```javascript
+TrackPlayer.getActiveTrackIndex(): number
+```
+
+#### Return Value
+
+Returns the index of the currently active track, or -1 if no track is active.
+
+#### Example
+
+```javascript
+const activeIndex = TrackPlayer.getActiveTrackIndex()
+if (activeIndex >= 0) {
+  console.log(`Currently playing track at index: ${activeIndex}`)
+
+  // Get the track details
+  const track = TrackPlayer.getTrack(activeIndex)
+  if (track) {
+    console.log(`Track: ${track.title}`)
+  }
+} else {
+  console.log("No track is currently active")
+}
+
+// Use with queue information
+const queue = TrackPlayer.getQueue()
+const activeIndex = TrackPlayer.getActiveTrackIndex()
+
+if (activeIndex >= 0 && activeIndex < queue.length) {
+  console.log(`Playing track ${activeIndex + 1} of ${queue.length}`)
+}
 ```

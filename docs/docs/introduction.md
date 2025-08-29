@@ -19,13 +19,18 @@ playback and queue management.
 
 - 🎵 **Full audio playback control** (play, pause, skip, seek)
 - 📋 **Queue management** for handling multiple tracks
+- 🔄 **Dynamic track metadata updates** for real-time information changes
 - 🔁 **Repeat modes** (Off, Track, Queue)
 - 🎚️ **Volume and playback rate control**
+- 🎛️ **10-band equalizer** with real-time audio processing
+- 🎨 **Audio visualization** with frequency and time-domain analysis
 - 📱 **MediaSession API integration** for media controls in browsers
 - 🔄 **Event system** for state changes and updates
 - 🌊 **Buffer state tracking** for improved user experience
 - 📊 **Playback progress tracking**
 - 🔧 **Configurable capabilities** to match your application needs
+- ⚛️ **React hooks** for seamless component integration
+- 🎯 **Advanced error handling** and recovery mechanisms
 
 ## Basic Example
 
@@ -89,13 +94,54 @@ useEffect(() => {
 }, [])
 ```
 
+## Advanced Features
+
+### Equalizer Control
+
+```javascript
+// Enable the 10-band equalizer
+TrackPlayer.setEqualizerEnabled(true)
+
+// Apply a preset
+TrackPlayer.setEqualizerPreset("rock")
+
+// Or customize individual bands
+TrackPlayer.setEqualizerBandGain(0, 6) // Boost bass at 32Hz
+TrackPlayer.setEqualizerBandGain(9, 4) // Boost treble at 16kHz
+```
+
+### Track Metadata Updates
+
+```javascript
+// Update track information dynamically
+await TrackPlayer.updateMetadataForTrack(0, {
+  title: "Updated Title",
+  artist: "New Artist",
+  artwork: "https://example.com/new-artwork.jpg"
+})
+```
+
+### Audio Visualization
+
+```javascript
+// Get real-time audio analysis data
+const analysisData = TrackPlayer.getAudioAnalysisData()
+if (analysisData) {
+  // Use frequencyData for spectrum visualization
+  // Use timeData for waveform visualization
+  renderVisualization(analysisData.frequencyData, analysisData.timeData)
+}
+```
+
 ## Why React Track Player Web?
 
+- **Complete Feature Set**: From basic playback to advanced audio processing
 - **Simple API**: Designed with ease of use in mind
-- **Complete Control**: Full control over the audio playback experience
 - **React Integration**: Custom hooks for seamless integration with React components
+- **Professional Audio Features**: Equalizer, audio analysis, and visualization capabilities
 - **Media Controls**: Support for browser and system media controls
 - **Comprehensive Documentation**: Everything you need to get started and master the library
+- **TypeScript Support**: Full TypeScript definitions included
 
-Ready to add audio playback to your React application? Follow our [Installation](/docs/installation) guide
+Ready to add professional audio playback to your React application? Follow our [Installation](/docs/installation) guide
 to get started!

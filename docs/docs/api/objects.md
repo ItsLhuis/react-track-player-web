@@ -283,15 +283,7 @@ Different events provide different data structures:
 }
 ```
 
-### PlaybackMetadataReceived Event
 
-```typescript
-{
-  type: Event.PlaybackMetadataReceived
-  track: number // Index of the track that received metadata
-  metadata: object // The new metadata object
-}
-```
 
 ## SetupOptions
 

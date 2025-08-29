@@ -46,14 +46,12 @@ Enum representing the different events that can be emitted by the player.
 import { Event } from "react-track-player-web"
 ```
 
-| Constant                         | Description                                      | Event Data                                                 |
-| -------------------------------- | ------------------------------------------------ | ---------------------------------------------------------- |
-| `Event.PlaybackState`            | Fired when the playback state changes            | `{ state: State }`                                         |
-| `Event.PlaybackTrackChanged`     | Fired when the current track changes             | `{ prevTrack: number, nextTrack: number }`                 |
-| `Event.PlaybackProgressUpdated`  | Fired periodically with position updates         | `{ position: number, duration: number, buffered: number }` |
-| `Event.PlaybackError`            | Fired when an error occurs during playback       | `{ error: string }`                                        |
-| `Event.PlaybackQueueEnded`       | Fired when playback reaches the end of the queue | `{}`                                                       |
-| `Event.PlaybackMetadataReceived` | Fired when track metadata is updated             | `{ track: number, metadata: object }`                      |
+| Constant                        | Description                                | Event Data                                                 |
+| ------------------------------- | ------------------------------------------ | ---------------------------------------------------------- |
+| `Event.PlaybackState`           | Fired when the playback state changes      | `{ state: State }`                                         |
+| `Event.PlaybackTrackChanged`    | Fired when the current track changes       | `{ prevTrack: number \| null, nextTrack: number \| null }` |
+| `Event.PlaybackProgressUpdated` | Fired periodically with position updates   | `{ position: number, duration: number, buffered: number }` |
+| `Event.PlaybackError`           | Fired when an error occurs during playback | `{ error: string, code?: string }`                         |
 
 ### Example
 
@@ -63,6 +61,14 @@ import { Event } from "react-track-player-web"
 // Listen for playback errors
 TrackPlayer.addEventListener(Event.PlaybackError, (data) => {
   console.error("Playback error:", data.error)
+  if (data.code) {
+    console.error("Error code:", data.code)
+  }
+})
+
+// Listen for track changes
+TrackPlayer.addEventListener(Event.PlaybackTrackChanged, (data) => {
+  console.log("Track changed from", data.prevTrack, "to", data.nextTrack)
 })
 ```
 
