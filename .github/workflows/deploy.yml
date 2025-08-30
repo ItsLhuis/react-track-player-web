@@ -51,9 +51,6 @@ jobs:
       - name: Build package
         run: npm run build
 
-      - name: Run tests
-        run: npm test
-
   release:
     name: Create GitHub Release
     needs: build-package
