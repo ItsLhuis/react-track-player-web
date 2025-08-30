@@ -2,6 +2,15 @@
 
 All notable changes to the React Track Player Web project will be documented in this file.
 
+## [1.1.3] - 2025-08-30
+
+### Fixed
+
+- 🚧 **Race condition in reset method causing AbortError**
+  - Fixed "The play() request was interrupted by a call to pause()" error during queue transitions
+  - Improved audio element cleanup with direct manipulation instead of async stop operations
+  - Removed TrackPlayer.stop() call from reset() method to prevent conflicts
+
 ## [1.1.2] - 2025-08-17
 
 ### Fixed
