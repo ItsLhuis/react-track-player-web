@@ -1,5 +1,4 @@
 import { Capability, Event, RepeatMode, State } from "./constants"
-
 import type {
   AudioAnalysisData,
   EqualizerBand,
@@ -1753,14 +1752,40 @@ class TrackPlayer {
    * @returns Promise that resolves when the player is reset
    */
   public static async reset(): Promise<void> {
-    const instance = TrackPlayer.getInstance()
+    // Return early if player is not set up to avoid errors
+    if (!TrackPlayer.instance || !TrackPlayer.instance.isSetup) {
+      return
+    }
 
-    await TrackPlayer.stop().catch(() => {})
+    const instance = TrackPlayer.instance
 
+    // Stop progress interval first to prevent events during reset
+    instance.stopProgressInterval()
+
+    // Clear the changing track flag to prevent state conflicts
+    instance.isChangingTrack = false
+
+    // Direct audio element cleanup instead of calling stop() to prevent race conditions
+    if (instance.audioElement) {
+      instance.playWhenReady = false
+      instance.audioElement.pause()
+      instance.audioElement.currentTime = 0
+      instance.audioElement.src = ""
+    }
+
+    // Clear all state
     instance.queue = []
     instance.currentTrackIndex = -1
     instance.metadataLoadedMap.clear()
+
+    // Clear MediaSession metadata if available
+    if (instance.options.useMediaSession && "mediaSession" in navigator) {
+      navigator.mediaSession.metadata = null
+    }
+
+    // Update state and restart progress interval
     instance.updateState(State.Ready)
+    instance.startProgressInterval()
   }
 
   /**
