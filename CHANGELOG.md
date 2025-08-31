@@ -2,6 +2,19 @@
 
 All notable changes to the React Track Player Web project will be documented in this file.
 
+## [1.1.4] - 2025-08-31
+
+### Refactored
+
+- 🔄 **Skip methods architecture and track loading flow**
+  - Simplified skipToNext() and skipToPrevious() methods to delegate navigation logic to skip()
+  - Removed duplicate track loading code and complex conditional logic from navigation methods
+  - Fixed handleEnded() method to prevent isChangingTrack flag conflicts during automatic
+    transitions
+  - Maintained skip() method behavior to preserve playback state continuity for better user
+    experience
+  - Improved code maintainability by centralizing navigation logic in single skip() method
+
 ## [1.1.3] - 2025-08-30
 
 ### Fixed
