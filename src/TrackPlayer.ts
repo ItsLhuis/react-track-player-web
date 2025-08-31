@@ -374,60 +374,45 @@ class TrackPlayer {
   private handleEnded(): void {
     const instance = TrackPlayer.getInstance()
 
-    instance.isChangingTrack = true
-
     switch (instance.repeatMode) {
       case RepeatMode.Track:
-        // Replay the current track
+        // Replay the current track directly without using skip()
+        instance.isChangingTrack = true
         if (instance.audioElement) {
           instance.audioElement.currentTime = 0
           instance.audioElement.play().catch(console.error)
-
-          // Ensure state is updated when track repeats
           instance.updateState(State.Playing)
         }
+        instance.isChangingTrack = false
         break
 
       case RepeatMode.Queue:
-        // If at the end of the queue, go back to the beginning
-        if (instance.currentTrackIndex >= instance.queue.length - 1) {
-          TrackPlayer.skip(0)
-            .then(() => TrackPlayer.play())
-            .catch(console.error)
-        } else {
-          // Otherwise proceed to next track
-          TrackPlayer.skipToNext()
-            .then(() => TrackPlayer.play())
-            .catch(console.error)
-        }
+        // Navigate to next track (or first if at end) and continue playing
+        const nextIndex =
+          instance.currentTrackIndex >= instance.queue.length - 1
+            ? 0
+            : instance.currentTrackIndex + 1
+
+        TrackPlayer.skip(nextIndex)
+          .then(() => TrackPlayer.play())
+          .catch(console.error)
         break
 
       case RepeatMode.Off:
       default:
-        // Try to play the next track
         if (instance.currentTrackIndex < instance.queue.length - 1) {
-          TrackPlayer.skipToNext()
+          // Navigate to next track and continue playing
+          TrackPlayer.skip(instance.currentTrackIndex + 1)
             .then(() => TrackPlayer.play())
-            .catch((error) => {
-              instance.isChangingTrack = false
-              console.error(error)
-            })
+            .catch(console.error)
         } else {
-          // End of the queue reached with repeat off
-          instance.isChangingTrack = false
-
-          // Important to mark as Stopped but NOT reset the currentTrackIndex
-          // This way we know we're at the end of the queue, not the beginning
+          // End of queue reached
           instance.updateState(State.Stopped)
           instance.playWhenReady = false
 
-          // Don't clear the source here to allow seeking the last track,
-          // but we do need to ensure currentTime is at the end for our logic in play()
-          if (instance.audioElement) {
-            // Ensure currentTime is at/near the end to trigger restart logic correctly
-            if (instance.audioElement.duration) {
-              instance.audioElement.currentTime = instance.audioElement.duration
-            }
+          // Keep current position at end for restart logic in play()
+          if (instance.audioElement && instance.audioElement.duration) {
+            instance.audioElement.currentTime = instance.audioElement.duration
           }
         }
         break
@@ -619,6 +604,13 @@ class TrackPlayer {
       throw new Error("Player not initialized")
     }
 
+    // Prevent concurrent loadTrack calls - enhanced protection
+    if (this.isChangingTrack) {
+      throw new Error(
+        "Another track is currently loading. Please wait for the current operation to complete."
+      )
+    }
+
     // Set the changing track flag to prevent unwanted state changes
     this.isChangingTrack = true
 
@@ -807,23 +799,6 @@ class TrackPlayer {
     } else {
       instance.queue.push(...tracksArray)
     }
-
-    // If nothing is playing yet, load the first track
-    if (instance.currentTrackIndex === -1 && instance.queue.length > 0) {
-      instance.currentTrackIndex = 0
-      const firstTrack = instance.queue[0]
-      await instance.loadTrack(firstTrack, false)
-
-      // Emit an initial track change event to ensure useActiveTrack picks it up
-      instance.emitEvent({
-        type: Event.PlaybackTrackChanged,
-        prevTrack: null,
-        nextTrack: 0
-      })
-
-      // Start preloading metadata for the next track
-      instance.preloadNextTrackMetadata()
-    }
   }
 
   /**
@@ -955,7 +930,7 @@ class TrackPlayer {
     const wasPlaying = instance.state === State.Playing || instance.playWhenReady
     instance.currentTrackIndex = index
 
-    // Don't change play state while changing tracks
+    // Load track and preserve play state
     await instance.loadTrack(instance.queue[index], wasPlaying)
 
     instance.emitEvent({
@@ -967,8 +942,10 @@ class TrackPlayer {
     // Start preloading metadata for the next track
     instance.preloadNextTrackMetadata()
 
-    // Preserve playback state
-    await TrackPlayer.play()
+    // If was playing, resume playback
+    if (wasPlaying) {
+      await TrackPlayer.play()
+    }
   }
 
   /**
@@ -987,52 +964,25 @@ class TrackPlayer {
       throw new Error("No track is currently playing")
     }
 
-    // If in repeat track mode, restart the current song
-    if (instance.repeatMode === RepeatMode.Track && instance.currentTrackIndex >= 0) {
-      const wasPlaying = instance.state === State.Playing || instance.playWhenReady
-      await instance.loadTrack(instance.queue[instance.currentTrackIndex], wasPlaying)
-      await TrackPlayer.play()
-      return
-    }
+    let nextIndex: number
 
-    // Check if we're at the end of the queue
-    if (instance.currentTrackIndex >= instance.queue.length - 1) {
+    // Determine next index based on repeat mode
+    if (instance.repeatMode === RepeatMode.Track) {
+      // In track repeat mode, "next" means restart current track
+      nextIndex = instance.currentTrackIndex
+    } else if (instance.currentTrackIndex >= instance.queue.length - 1) {
+      // At end of queue
       if (instance.repeatMode === RepeatMode.Queue && instance.queue.length > 0) {
-        const wasPlaying = instance.state === State.Playing || instance.playWhenReady
-        instance.currentTrackIndex = 0
-
-        await instance.loadTrack(instance.queue[0], wasPlaying)
-
-        instance.emitEvent({
-          type: Event.PlaybackTrackChanged,
-          prevTrack: instance.queue.length - 1, // The previous track was the last one
-          nextTrack: instance.currentTrackIndex
-        })
-
-        await TrackPlayer.play()
-        return
+        nextIndex = 0
       } else {
-        // If there's only one track in queue and not in repeat mode, throw error
-        if (instance.queue.length === 1) {
-          throw new Error("No next track available")
-        }
         throw new Error("No next track available")
       }
+    } else {
+      // Normal case: go to next track
+      nextIndex = instance.currentTrackIndex + 1
     }
 
-    const wasPlaying = instance.state === State.Playing || instance.playWhenReady
-    instance.currentTrackIndex += 1
-
-    await instance.loadTrack(instance.queue[instance.currentTrackIndex], wasPlaying)
-
-    instance.emitEvent({
-      type: Event.PlaybackTrackChanged,
-      prevTrack: instance.currentTrackIndex - 1,
-      nextTrack: instance.currentTrackIndex
-    })
-
-    instance.preloadNextTrackMetadata()
-    await TrackPlayer.play()
+    await TrackPlayer.skip(nextIndex)
   }
 
   /**
@@ -1051,52 +1001,25 @@ class TrackPlayer {
       throw new Error("No track is currently playing")
     }
 
-    // If in repeat track mode, restart the current song
-    if (instance.repeatMode === RepeatMode.Track && instance.currentTrackIndex >= 0) {
-      const wasPlaying = instance.state === State.Playing || instance.playWhenReady
-      await instance.loadTrack(instance.queue[instance.currentTrackIndex], wasPlaying)
-      await TrackPlayer.play()
-      return
-    }
+    let prevIndex: number
 
-    // Check if we're at the beginning of the queue
-    if (instance.currentTrackIndex <= 0) {
+    // Determine previous index based on repeat mode
+    if (instance.repeatMode === RepeatMode.Track) {
+      // In track repeat mode, "previous" means restart current track
+      prevIndex = instance.currentTrackIndex
+    } else if (instance.currentTrackIndex <= 0) {
+      // At beginning of queue
       if (instance.repeatMode === RepeatMode.Queue && instance.queue.length > 0) {
-        const wasPlaying = instance.state === State.Playing || instance.playWhenReady
-        instance.currentTrackIndex = instance.queue.length - 1
-
-        await instance.loadTrack(instance.queue[instance.currentTrackIndex], wasPlaying)
-
-        instance.emitEvent({
-          type: Event.PlaybackTrackChanged,
-          prevTrack: 0, // The previous track was the first one
-          nextTrack: instance.currentTrackIndex
-        })
-
-        await TrackPlayer.play()
-        return
+        prevIndex = instance.queue.length - 1
       } else {
-        // If there's only one track in queue and not in repeat mode, throw error
-        if (instance.queue.length === 1) {
-          throw new Error("No previous track available")
-        }
         throw new Error("No previous track available")
       }
+    } else {
+      // Normal case: go to previous track
+      prevIndex = instance.currentTrackIndex - 1
     }
 
-    const wasPlaying = instance.state === State.Playing || instance.playWhenReady
-    instance.currentTrackIndex -= 1
-
-    await instance.loadTrack(instance.queue[instance.currentTrackIndex], wasPlaying)
-
-    instance.emitEvent({
-      type: Event.PlaybackTrackChanged,
-      prevTrack: instance.currentTrackIndex + 1,
-      nextTrack: instance.currentTrackIndex
-    })
-
-    instance.preloadNextTrackMetadata()
-    await TrackPlayer.play()
+    await TrackPlayer.skip(prevIndex)
   }
 
   /**
@@ -1217,8 +1140,25 @@ class TrackPlayer {
       (instance.audioElement.currentTime >= instance.audioElement.duration - 0.1 ||
         instance.audioElement.duration === 0)
 
-    // If we need to start from beginning
-    if ((instance.currentTrackIndex === -1 || isAtQueueEnd) && instance.queue.length > 0) {
+    // If no track is loaded but we have tracks in queue, load the first one
+    if (instance.currentTrackIndex === -1 && instance.queue.length > 0) {
+      const prevTrackIndex = instance.currentTrackIndex
+      instance.currentTrackIndex = 0
+      const firstTrack = instance.queue[0]
+      await instance.loadTrack(firstTrack, false)
+
+      // Emit an initial track change event to ensure useActiveTrack picks it up
+      instance.emitEvent({
+        type: Event.PlaybackTrackChanged,
+        prevTrack: prevTrackIndex >= 0 ? prevTrackIndex : null,
+        nextTrack: 0
+      })
+
+      // Start preloading metadata for the next track
+      instance.preloadNextTrackMetadata()
+    }
+    // If we need to start from beginning due to queue end
+    else if (isAtQueueEnd && instance.queue.length > 0) {
       const prevTrackIndex = instance.currentTrackIndex
       instance.currentTrackIndex = 0
       await instance.loadTrack(instance.queue[0], false)
