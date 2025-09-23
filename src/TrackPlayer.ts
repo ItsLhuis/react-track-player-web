@@ -67,6 +67,7 @@ class TrackPlayer {
   private repeatMode: RepeatMode = RepeatMode.Off
   private isChangingTrack: boolean = false
   private metadataLoadedMap: Map<number, boolean> = new Map()
+  private persistentRate: number = 1.0
 
   private hasTriedInitAudio: boolean = false
 
@@ -639,6 +640,15 @@ class TrackPlayer {
       // Load the audio
       this.audioElement.load()
 
+       // Handle rate for live streams vs regular tracks
+       if (track.isLiveStream) {
+         // Live streams should always be at 1.0x for proper sync
+         this.audioElement.playbackRate = 1.0
+       } else {
+         // For regular tracks, apply the persistent rate
+         this.audioElement.playbackRate = this.persistentRate
+       }
+
       if (this.options.useMediaSession) {
         this.updateMediaSessionMetadata()
       }
@@ -1193,6 +1203,9 @@ class TrackPlayer {
 
     instance.playWhenReady = true
 
+    // Don't manipulate playbackRate during play() - let it be controlled by user via setRate()
+    // This prevents conflicts and multiple ratechange events
+
     try {
       await instance.audioElement.play()
     } catch (error) {
@@ -1375,7 +1388,7 @@ class TrackPlayer {
 
   /**
    * Sets the playback rate
-   * @param rate Playback rate from 0.25 to 2.0
+   * @param rate Playback rate from 0.25 to 4.0
    * @returns Promise that resolves when the rate is set
    */
   public static async setRate(rate: number): Promise<void> {
@@ -1389,7 +1402,17 @@ class TrackPlayer {
       throw new Error("Player not initialized")
     }
 
-    instance.audioElement.playbackRate = Math.max(0.25, Math.min(2.0, rate))
+     const clampedRate = Math.max(0.25, Math.min(4.0, rate))
+     const currentTrack = instance.getCurrentTrackObject()
+     
+     // If current track is live, don't allow rate changes
+     if (currentTrack?.isLiveStream) {
+       throw new Error("Cannot change playback rate for live streams")
+     }
+
+     // Update both the audio element and our tracking variables
+     instance.audioElement.playbackRate = clampedRate
+     instance.persistentRate = clampedRate
   }
 
   /**
@@ -1403,6 +1426,7 @@ class TrackPlayer {
       throw new Error("Player not initialized")
     }
 
+    // Return the actual playbackRate from the audio element like native
     return instance.audioElement.playbackRate
   }
 

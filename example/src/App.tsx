@@ -183,7 +183,7 @@ const VolumeControl = ({
 const PlaybackSpeedControl = ({ isLive }: { isLive: boolean }) => {
   const [playbackRate, setPlaybackRate] = useState(1)
 
-  const handleRateChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
+  const handleRateChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const rate = parseFloat(e.target.value)
     setPlaybackRate(rate)
     TrackPlayer.setRate(rate).catch(console.error)
@@ -194,18 +194,22 @@ const PlaybackSpeedControl = ({ isLive }: { isLive: boolean }) => {
   return (
     <div className="flex items-center gap-2">
       <span className="text-sm text-gray-700">Speed:</span>
-      <select
-        value={playbackRate}
-        onChange={handleRateChange}
-        className="p-1 border border-gray-300 rounded text-sm"
-      >
-        <option value="0.5">0.5x</option>
-        <option value="0.75">0.75x</option>
-        <option value="1">1x</option>
-        <option value="1.25">1.25x</option>
-        <option value="1.5">1.5x</option>
-        <option value="2">2x</option>
-      </select>
+      <div className="flex items-center gap-2">
+        <span className="text-xs text-gray-500">0.5x</span>
+        <input
+          type="range"
+          min="0.5"
+          max="2"
+          step="0.25"
+          value={playbackRate}
+          onChange={handleRateChange}
+          className="w-20 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+        />
+        <span className="text-xs text-gray-500">2x</span>
+        <span className="text-sm font-medium text-gray-700 min-w-[3rem] text-center">
+          {playbackRate}x
+        </span>
+      </div>
     </div>
   )
 }
