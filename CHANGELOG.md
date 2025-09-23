@@ -2,6 +2,16 @@
 
 All notable changes to the React Track Player Web project will be documented in this file.
 
+## [1.1.5] - 2025-09-23
+
+### Improved
+
+- 🎵 **Playback rate handling for live streams**
+  - Added persistent rate tracking to maintain user-selected playback speed across track changes
+  - Live streams now properly maintain 1.0x playback rate for optimal synchronization
+  - Regular tracks preserve user-configured playback rate when switching between tracks
+  - Enhanced rate change validation to prevent conflicts during track transitions
+
 ## [1.1.4] - 2025-08-31
 
 ### Refactored
