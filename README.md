@@ -1,3 +1,14 @@
+# ⚠️ DEPRECATED
+
+This package has been moved to [@track-player/web](https://www.npmjs.com/package/@track-player/web).
+
+Please update your dependencies:
+
+```bash
+npm uninstall react-track-player-web
+npm install @track-player/web
+```
+
 <img src="assets/icon.svg" width="100" height="100" />
 
 # React Track Player Web
@@ -337,8 +348,8 @@ TrackPlayer.setEqualizerPreset("rock")
 TrackPlayer.setEqualizerPreset("flat")
 ```
 
-Available presets: `"rock"`, `"pop"`, `"jazz"`, `"classical"`, `"electronic"`, `"vocal"`,  
-`"bass"`, `"treble"`, `"flat"`
+Available presets: `"rock"`, `"pop"`, `"jazz"`, `"classical"`, `"electronic"`, `"vocal"`, `"bass"`,
+`"treble"`, `"flat"`
 
 #### Get current bands
 
